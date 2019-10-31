@@ -33,15 +33,20 @@
   #define PIXEL_COUNT_1 4
 #endif
 
+const uint8_t BRIGHTNESS_DATA_START = 0;
 const uint8_t SHOW_DATA_START = 4;
 
-// Parameter 1 = number of pixels in strip,  neopixel stick has 8
+const int numBrightLevels = 6;
+const float BRIGHT_LEVELS[numBrightLevels]={0.08,0.18,0.24,0.50,0.75,1.0};
+uint8_t BrightnessIDX=0;
+
+// Parameter 1 = number of pixels in strip,
 // Parameter 2 = pin number (most are valid)
 // Parameter 3 = pixel type flags, add together as needed:
 //   NEO_RGB     Pixels are wired for RGB bitstream
-//   NEO_GRB     Pixels are wired for GRB bitstream, correct for neopixel stick
+//   NEO_GRB     Pixels are wired for GRB bitstream
 //   NEO_KHZ400  400 KHz bitstream (e.g. FLORA pixels)
-//   NEO_KHZ800  800 KHz bitstream (e.g. High Density LED strip), correct for neopixel stick
+//   NEO_KHZ800  800 KHz bitstream (e.g. High Density LED strip)
 Adafruit_NeoPixel strip = Adafruit_NeoPixel(PIXEL_COUNT, PIXEL_PIN, NEO_GRB + NEO_KHZ800);
 
 #ifdef JULES
@@ -56,7 +61,7 @@ bool oldState = HIGH;
 int showType = 0;
 int numShows = 8;
 bool switchShows = false;
-float Brightness = 1.0;
+float Brightness = BRIGHT_LEVELS[numBrightLevels-1];
 bool requiresLoop=0;
 bool newButton=false;
 
@@ -65,10 +70,15 @@ unsigned long transitionTime = 0.5;
 unsigned long timeBetweenPresses = 10000;  // the last time the output pin was toggled
 unsigned long timeHeld =0;
 unsigned long lastPressTime = 0;    // the debounce time; increase if the output flickers
+unsigned long lastPressDownTime=0;
 unsigned long brightPressTime=1000;
 unsigned long brightInitTime=250;
 unsigned long brightEndTime=1500;
 unsigned long startBrightCurr=0;
+unsigned long debouncing_time = 400; // [ms] Debouncing time
+volatile unsigned long last_micros;
+
+
 
 bool setBright = false;
 bool firstcall=true;
@@ -87,7 +97,7 @@ void setup() {
     Serial.begin(115200);
   #endif
   
-  attachInterrupt(digitalPinToInterrupt(BUTTON_PIN), debounce, CHANGE);
+  attachInterrupt(digitalPinToInterrupt(BUTTON_PIN), debounceInterrupt, CHANGE);
   
 }
 
@@ -97,8 +107,19 @@ void loop() {
     firstcall=false;
   }
   else{
-    switchShows=false;
-    startShow();
+    if (setBright){
+      startBlink(150);
+      startBlink(150);
+      showColor(128,128,128);
+      while ((millis()-startBrightCurr)<brightEndTime){
+        showColor(128,128,128);
+      }
+      setBright=false;
+      }
+    else{
+      switchShows=false;
+      startShow();
+    }
   }
 }
 
@@ -132,48 +153,6 @@ void startShow() {
           requiresLoop=0;
         } //Red
         break;
-      case 41:{showColorAnimate(0, 255, 0,30);
-          requiresLoop=0;
-        }//Green
-        break;
-      case 51: {genPulse(0, 255, 0,20);
-          requiresLoop=0;
-        } //Red
-        break;
-      case 61:{ showColorAnimate(0, 30, 255,30); //Blue
-          requiresLoop=0;
-        }
-        break;
-      case 71: {genPulse(0, 30, 255,20);
-          requiresLoop=0;
-        } //Red
-        break;
-      case 81:{ showColorAnimate(120, 0, 255,30); //Purple
-          requiresLoop=0;
-        }
-        break;
-      case 91: {genPulse(120, 0, 255,20);
-          requiresLoop=0;
-        } //Red
-        break;
-      case 101:{ showColorAnimate(255, 0, 255,30); //Pink
-          requiresLoop=0;
-        }
-        break;
-      case 111: {genPulse(255, 0, 255,20);
-          requiresLoop=0;
-        } //Red
-        break;
-      case 121: {showRainbow(30); //Rainbow
-        requiresLoop=0;
-        }
-        break;
-        //Michigan
-      case 141: halfAndHalfAnimated(255,255,0,0,31,173,20);
-        break;
-        //Michigan State
-      case 131: halfAndHalfAnimated(255,255,255,50,200,100,20);
-        break;
       case 5: rainbowCycleDim(10,1,true); //DISCO SKULL!!!!!
         break;
       case 6: {roboCop(255, 10, 0,0, 0, 0,1);
@@ -182,7 +161,7 @@ void startShow() {
       }
         break;
       case 7: { showColor(255,0,0);
-          rainbowCycleHair(5,1);
+          rainbowCycleHair(5,1); //Rave Hair/Spikes!!!!
           requiresLoop=1;
       }
         break;
@@ -467,31 +446,6 @@ uint32_t Wheel_hair(byte WheelPos) {
 
 
 
-//ISR
-boolean debounce(){
-cli();
-delay(20);
-int reading = digitalRead(BUTTON_PIN);
-
-if (reading==LOW){ 
-  timeBetweenPresses=millis()-lastPressTime;
-  lastPressTime=millis();
-   
-  }
-  else{
-    showType++;
-      if (showType >= numShows){
-        showType=0;
-      }
-      switchShows=true;  
-  }
-  saveSettings();
-  sei();
-}
-
-
-
-
 /* InOutQuadBlend takes in elements of a vector of times [0;1]
  *  and returns wait times. 
  */
@@ -511,6 +465,62 @@ float BezierBlend(float t)
 {
     return (t*t) * (3.0f - 2.0f * t);
 }
+
+
+
+
+//ISR
+void debounceInterrupt() {
+  if((long)(micros() - last_micros) >= debouncing_time * 1000) {
+    bool reading = digitalRead(BUTTON_PIN);
+    if(reading==LOW){ //Falling
+      lastPressDownTime = millis();
+    }
+    else{   
+      switchShow();
+      last_micros = micros();
+    }
+  }
+}
+
+
+
+boolean switchShow(){
+  unsigned long currTime = millis();
+
+  if(setBright){
+    incrementBrightness();
+    startBrightCurr=millis();
+  }
+  else{
+    if((currTime-lastPressDownTime) > brightPressTime){
+      setBright=true;
+      startBrightCurr=millis();
+    }
+    else{
+      showType++;
+      if (showType >= numShows){
+        showType=0;
+      }
+      switchShows=true;  
+    }
+
+    lastPressTime=currTime;
+  }
+  saveSettings();
+}
+
+
+void incrementBrightness(){
+//Update the brightness
+  BrightnessIDX++;
+  if (BrightnessIDX>=numBrightLevels){
+    BrightnessIDX=0;
+  }
+  Brightness=BRIGHT_LEVELS[BrightnessIDX];
+
+}
+
 
 
 
