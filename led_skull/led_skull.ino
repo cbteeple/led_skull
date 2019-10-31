@@ -124,6 +124,7 @@ void loop() {
         showColor(128,128,128);
       }
       setBright=false;
+      switchShows=true;
       }
     else{
       if (switchShows || requiresLoop){
