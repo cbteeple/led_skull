@@ -11,6 +11,7 @@
 //#include "PinChangeInterrupt.h"
 
 //#define JULES
+//#define DEBUG
 
 #define BUTTON_PIN 2    // Digital IO pin connected to the button.  This will be
                           // driven with a pull-up resistor so the switch should
@@ -73,13 +74,23 @@ unsigned long lastPressTime = 0;    // the debounce time; increase if the output
 unsigned long lastPressDownTime=0;
 unsigned long brightPressTime=1000;
 unsigned long brightInitTime=250;
-unsigned long brightEndTime=1500;
+unsigned long brightEndTime=3000;
 unsigned long startBrightCurr=0;
 unsigned long debouncing_time = 400; // [ms] Debouncing time
 volatile unsigned long last_micros;
 
 
 //Set the resting colors of things:
+#ifdef JULES
+uint8_t hair_r = 255;
+uint8_t hair_g = 100;
+uint8_t hair_b = 0;
+
+uint8_t head_r = 255;
+uint8_t head_g = 20;
+uint8_t head_b = 0;
+
+#else
 uint8_t hair_r = 20;
 uint8_t hair_g = 40;
 uint8_t hair_b = 255;
@@ -87,6 +98,7 @@ uint8_t hair_b = 255;
 uint8_t head_r = 255;
 uint8_t head_g = 20;
 uint8_t head_b = 0;
+#endif
 
 
 bool setBright = false;
@@ -148,8 +160,8 @@ void startShow() {
           requiresLoop=1;
         } //Red
         break;
-      case 2: {roboCop(head_r,head_g,head_b,  hair_r,hair_g,hair_b,  1);
-            requiresLoop=0;
+      case 2: {genPulse(255, 255, 255,  255,255,255,  7);
+          requiresLoop=1;
           }
           break;
       case 3: {rainbowCycleDim(10,1,0,true); //DISCO SKULL!!!!!
@@ -305,13 +317,13 @@ void genPulse(uint8_t red, uint8_t green,uint8_t blue,uint8_t red_h, uint8_t gre
   
   bool flip = true;
   float bright1=Brightness;
-  float bright2=Brightness/3;
+  float bright2=Brightness/4;
   float bright_tmp = bright1;
   int maxSteps=127;
   float progress=0.0;
 
-  showColorAnimateHead(red/float(3), green/float(3), blue/float(3),50);
-  showColorAnimateHair(red_h/float(3), green_h/float(3), blue_h/float(3),50);
+  showColorAnimateHead(red/float(4), green/float(4), blue/float(4),50);
+  showColorAnimateHair(red_h/float(4), green_h/float(4), blue_h/float(4),50);
 
   for (uint8_t k=0;k<2;k++){
     for (uint16_t i=0; i<maxSteps+1; i++){
@@ -345,7 +357,7 @@ void genPulse(uint8_t red, uint8_t green,uint8_t blue,uint8_t red_h, uint8_t gre
         delay(wait);
       }
       else{
-      delay(wait*2);  
+      delay(wait*2.5);  
       }
       
     }
@@ -412,7 +424,7 @@ void showRainbow(uint16_t wait){
   uint16_t i=0;
   for(i=0; i< strip.numPixels(); i++) {
     if (setBright || switchShows){
-          return;
+      return;
     }
     strip.setPixelColor(i, Wheel(((i * 256 / strip.numPixels()) + j) & 255));
     strip.show(); 
@@ -557,6 +569,7 @@ boolean switchShow(){
   else{
     if((currTime-lastPressDownTime) > brightPressTime){
       setBright=true;
+      //Serial.println("Set Brightness");
       startBrightCurr=millis();
     }
     else{
@@ -564,7 +577,8 @@ boolean switchShow(){
       if (showType >= numShows){
         showType=0;
       }
-      switchShows=true;  
+      switchShows=true;
+      //Serial.println("Switch Shows");
     }
 
     lastPressTime=currTime;
