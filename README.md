@@ -38,6 +38,7 @@ This code is a bit of a hack job based on the code for my [LED Drink Coasters](h
 
 ## Usage
 ### Light Modes
+Press the button to move between modes
 - Static Color (head & hair can be different colors)
 - Pulsing/Breathing (head & hair can be differnt colors)
 - Robocop (head & hair can be differnt colors)
