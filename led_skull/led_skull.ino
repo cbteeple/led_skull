@@ -59,8 +59,8 @@ Adafruit_NeoPixel strip_hair = Adafruit_NeoPixel(PIXEL_COUNT_1, PIXEL_PIN_1, NEO
 
 bool oldState = HIGH;
 int showType = 0;
-int numShows = 7;
-bool switchShows = false;
+int numShows = 6;
+bool switchShows = true;
 float Brightness = BRIGHT_LEVELS[numBrightLevels-1];
 bool requiresLoop=0;
 bool newButton=false;
@@ -78,6 +78,15 @@ unsigned long startBrightCurr=0;
 unsigned long debouncing_time = 400; // [ms] Debouncing time
 volatile unsigned long last_micros;
 
+
+//Set the resting colors of things:
+uint8_t hair_r = 20;
+uint8_t hair_g = 40;
+uint8_t hair_b = 255;
+
+uint8_t head_r = 255;
+uint8_t head_g = 20;
+uint8_t head_b = 0;
 
 
 bool setBright = false;
@@ -117,44 +126,40 @@ void loop() {
       setBright=false;
       }
     else{
-      switchShows=false;
-      startShow();
+      if (switchShows || requiresLoop){
+        switchShows=false;
+        startShow();
+      }
     }
   }
 }
 
 void startShow() {
   switch (showType){
-      case 0: {showColorAnimate(255, 20, 0,50);
-          requiresLoop=0;
+      case 0: {
+        showColorAnimateHead(head_r, head_g, head_b,50);
+        showColorAnimateHair(hair_r,hair_g,hair_b,60);
+        requiresLoop=0;
         } //Red
         break;
       case 1: {
-          //halfAndHalf(0, 255, 0,255, 255, 0,20);
-          genPulse(255, 20, 0,15);
-          requiresLoop=0;
+          genPulse(head_r, head_g,head_b,  hair_r,hair_g,hair_b,  9);
+          requiresLoop=1;
         } //Red
         break;
-      case 2:{
-          halfAndHalf(0, 164, 255,63, 0, 255,1);
-          //showColorAnimate(0, 164, 255,30);
-          requiresLoop=0;
-        }//Yellow
-        break;
-     case 3:{
-          halfAndHalfAnimated(0, 164, 255,63, 0, 255,5);
-          //showColorAnimate(0, 164, 255,30);
-          requiresLoop=0;
-        }//Yellow
-        break;
-      case 4: rainbowCycleDim(10,1,true); //DISCO SKULL!!!!!
-        break;
-      case 5: {roboCop(255, 10, 0,0, 0, 0,1);
-          //showColorAnimate(0, 164, 255,30);
-          requiresLoop=0;
+      case 2: {roboCop(head_r,head_g,head_b,  hair_r,hair_g,hair_b,  1);
+            requiresLoop=0;
+          }
+          break;
+      case 3: {rainbowCycleDim(10,1,0,true); //DISCO SKULL!!!!!
+        requiresLoop=1;
         }
         break;
-      case 6: { showColor(255,0,0);
+      case 4: {rainbowCycleDim(10,1,70,false); //DISCO SKULL CHOPPY!!!!!
+        requiresLoop=1;
+        }
+        break;
+      case 5: { showColor(255,0,0);
           rainbowCycleHair(3,1); //Rave Hair/Spikes!!!!
           requiresLoop=1;
         }
@@ -171,34 +176,41 @@ void startShow() {
 //================================
 
 // Same as RainbowCycle, except Dimmer
-void rainbowCycleDim(uint8_t wait, uint8_t reps, bool FullColor) {
+void rainbowCycleDim(uint8_t wait, uint8_t reps, uint8_t wait_hair, bool smooth) {
   uint16_t i, j;
+  bool FullColor=true;
 
   for(j=0; j<256*reps; j++) { // 5 cycles of all colors on wheel
     if (setBright || switchShows){
       break ;
     }
-    
-    for(i=0; i< strip.numPixels(); i++) {
-      if (FullColor){
-        strip.setPixelColor(i, Wheel(j & 255));
-        }
-      else{
-        strip.setPixelColor(i, Wheel(((i * 256 / strip.numPixels()) + j) & 255));
-      }
-    }
 
-    for(i=0; i< strip_hair.numPixels(); i++) {
-      if (FullColor){
-        strip_hair.setPixelColor(i, Wheel(j & 255));
+    if (j%32==0 || smooth ){
+      // Set the hair color in a nice wave back-to-front
+      for(int k=strip_hair.numPixels()-1; k>=0; k--) {
+        if (FullColor){
+          strip_hair.setPixelColor(k, Wheel(j & 255));
+          }
+        else{
+          strip_hair.setPixelColor(k, Wheel(((i * 256 / strip_hair.numPixels()) + j) & 255));
         }
-      else{
-        strip_hair.setPixelColor(i, Wheel(((i * 256 / strip_hair.numPixels()) + j) & 255));
+        strip_hair.show();
+        delay(wait_hair);
       }
+
+      // Set the inside colors
+      for(i=0; i< strip.numPixels(); i++) {
+        if (FullColor){
+          strip.setPixelColor(i, Wheel(j & 255));
+          }
+        else{
+          strip.setPixelColor(i, Wheel(((i * 256 / strip.numPixels()) + j) & 255));
+        }
+      }
+      
     }
     
     strip.show();
-    strip_hair.show();
     delay(wait);
   }
 }
@@ -212,7 +224,7 @@ void halfAndHalf(uint8_t r1, uint8_t g1, uint8_t b1, uint8_t r2, uint8_t g2, uin
       if (setBright || switchShows){
         break ;
       }
-      strip_hair.setPixelColor(i, strip_hair.Color(r1*Brightness,g1*Brightness,b1*Brightness));
+      strip_hair.setPixelColor(i, strip_hair.Color(r2*Brightness,g2*Brightness,b2*Brightness));
       strip_hair.show(); 
       delay(wait); 
     }
@@ -288,7 +300,7 @@ void halfAndHalfAnimated(uint8_t r1, uint8_t g1, uint8_t b1, uint8_t r2, uint8_t
 
 
 
-void genPulse(uint8_t red, uint8_t green,uint8_t blue,uint16_t wait){
+void genPulse(uint8_t red, uint8_t green,uint8_t blue,uint8_t red_h, uint8_t green_h,uint8_t blue_h,uint16_t wait){
   
   bool flip = true;
   float bright1=Brightness;
@@ -297,7 +309,8 @@ void genPulse(uint8_t red, uint8_t green,uint8_t blue,uint16_t wait){
   int maxSteps=127;
   float progress=0.0;
 
-  showColorAnimate(red/float(3), green/float(3), blue/float(3),50);
+  showColorAnimateHead(red/float(3), green/float(3), blue/float(3),50);
+  showColorAnimateHair(red_h/float(3), green_h/float(3), blue_h/float(3),50);
 
   for (uint8_t k=0;k<2;k++){
     for (uint16_t i=0; i<maxSteps+1; i++){
@@ -319,7 +332,7 @@ void genPulse(uint8_t red, uint8_t green,uint8_t blue,uint16_t wait){
           strip.setPixelColor(j, strip.Color(red*bright_tmp,green*bright_tmp,blue*bright_tmp));
       }
       for (uint8_t j=0; j<strip_hair.numPixels(); j++){
-          strip_hair.setPixelColor(j, strip_hair.Color(red*bright_tmp,green*bright_tmp,blue*bright_tmp));
+          strip_hair.setPixelColor(j, strip_hair.Color(red_h*bright_tmp,green_h*bright_tmp,blue_h*bright_tmp));
       }
   
       //update values to al pixels
@@ -327,10 +340,17 @@ void genPulse(uint8_t red, uint8_t green,uint8_t blue,uint16_t wait){
       strip_hair.show(); 
   
       //Wait the correct amount of time
-      delay(wait);
+      if (flip){
+        delay(wait);
+      }
+      else{
+      delay(wait*2);  
+      }
+      
     }
     flip=!flip;
-  } 
+  }
+  delay(wait*20); 
 }
 
 
@@ -364,6 +384,28 @@ void showColorAnimate(uint8_t red,uint8_t green,uint8_t blue,uint16_t wait){
 }
 
 
+void showColorAnimateHead(uint8_t red,uint8_t green,uint8_t blue,uint16_t wait){
+  for(int i=0; i< strip.numPixels(); i++) {
+    strip.setPixelColor(i, strip.Color(red*Brightness,green*Brightness,blue*Brightness));
+    strip.show();      
+    
+    delay(wait);
+  }
+     
+}
+
+
+void showColorAnimateHair(uint8_t red,uint8_t green,uint8_t blue,uint16_t wait){
+  for(int i=0; i< strip_hair.numPixels(); i++) {
+    strip_hair.setPixelColor(i, strip_hair.Color(red*Brightness,green*Brightness,blue*Brightness));
+    strip_hair.show();      
+    
+    delay(wait);
+  }
+     
+}
+
+
 void showRainbow(uint16_t wait){
   uint16_t j=0;
   uint16_t i=0;
@@ -387,11 +429,16 @@ void startBlink(uint16_t wait){
 
 
 
-void roboCop(uint8_t r1, uint8_t g1, uint8_t b1, uint8_t r2, uint8_t g2, uint8_t b2,uint16_t wait){
+void roboCop(uint8_t r1, uint8_t g1, uint8_t b1, uint8_t r_hair, uint8_t g_hair, uint8_t b_hair,uint16_t wait){
+  uint8_t r2 = 0;
+  uint8_t g2 = 0;
+  uint8_t b2 = 0;
+  
   uint16_t i, j, k;
     //Set inital configuration
-    showColor(r1,g1,b1);
-    
+    showColorAnimateHead(r1,g1,b1,60);
+    showColorAnimateHair(r_hair,g_hair,b_hair,60);
+      
     for(i=0; i< EYE_COUNT; i++) {
       if (i<EYE_COUNT/2){
         strip.setPixelColor(i, strip.Color(r1*Brightness,g1*Brightness,b1*Brightness));
@@ -404,16 +451,18 @@ void roboCop(uint8_t r1, uint8_t g1, uint8_t b1, uint8_t r2, uint8_t g2, uint8_t
     
     //Slowly rotate
     bool flip = false;
-    for (k=0; k<EYE_COUNT; k++){
-      for (j=0; j<128; j++){
-        if (setBright || switchShows){
-          return;
+    while(!(setBright || switchShows)){
+      for (k=0; k<EYE_COUNT; k++){
+        for (j=0; j<128; j++){
+          if (setBright || switchShows){
+            return;
+          }
+          float ratio=float(j/128.0);
+          strip.setPixelColor((k+EYE_COUNT/2)%(EYE_COUNT), strip.Color(((ratio*r1)+((1.0-ratio)*r2))*Brightness,((ratio*g1)+((1.0-ratio)*g2))*Brightness,((ratio*b1)+((1.0-ratio)*b2))*Brightness));
+          strip.setPixelColor(k, strip.Color(((ratio*r2)+((1.0-ratio)*r1))*Brightness,((ratio*g2)+((1.0-ratio)*g1))*Brightness,((ratio*b2)+((1.0-ratio)*b1))*Brightness));
+          strip.show(); 
+          delay(wait);   
         }
-        float ratio=float(j/128.0);
-        strip.setPixelColor((k+EYE_COUNT/2)%(EYE_COUNT), strip.Color(((ratio*r1)+((1.0-ratio)*r2))*Brightness,((ratio*g1)+((1.0-ratio)*g2))*Brightness,((ratio*b1)+((1.0-ratio)*b2))*Brightness));
-        strip.setPixelColor(k, strip.Color(((ratio*r2)+((1.0-ratio)*r1))*Brightness,((ratio*g2)+((1.0-ratio)*g1))*Brightness,((ratio*b2)+((1.0-ratio)*b1))*Brightness));
-        strip.show(); 
-        delay(wait);   
       }
     }
     
@@ -537,20 +586,27 @@ void incrementBrightness(){
 
 
 void saveSettings(){
-  //EEPROM_writeAnything(BRIGHTNESS_DATA_START, Brightness);
+  //EEPROM_writeAnything(BRIGHTNESS_DATA_START, BrightnessIDX);
+  EEPROM.write(BRIGHTNESS_DATA_START, BrightnessIDX);
   EEPROM.write(SHOW_DATA_START, showType);
   //EEPROM_writeAnything(, showType);
 }
 
 void readSettings(){
     //Read old settings from EEPROM
-  //EEPROM_readAnything(BRIGHTNESS_DATA_START, Brightness);
+  //EEPROM_readAnything(BRIGHTNESS_DATA_START, BrightnessIDX);
   uint8_t tmpShow= EEPROM.read(SHOW_DATA_START);
+  uint8_t tmpBright= EEPROM.read(BRIGHTNESS_DATA_START);
 
   
   //If show number is unreasonable, go back to default
   if (tmpShow<numShows & tmpShow>=0){
     showType = tmpShow;
+  }
+
+  if (tmpBright>0 & tmpBright<(numBrightLevels-1)){
+    BrightnessIDX = tmpBright;
+    Brightness=BRIGHT_LEVELS[BrightnessIDX];
   }
 }
 
