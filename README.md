@@ -43,7 +43,7 @@ This code is a bit of a hack job based on the code for my [LED Drink Coasters](h
 Press the button to move between modes
 - Static Color (head & hair can be different colors)
 - Pulsing/Breathing (head & hair can be differnt colors)
-- Robocop (head & hair can be differnt colors)
+- Pulsing/Breathing (all LEDs are white)
 - Smooth rainbow color wheel (all LEDs in sync)
 - Choppy rainbow color wheel (colors update in a cool pulse from the back of the hair to the front)
 - Rave spikes!!! (Fast smooth color wheel from back to front!)
@@ -53,4 +53,4 @@ Press the button to move between modes
 2. The whole skull will blink white
 3. Use the button to increment the brightness. Possible settings include:
     - [8%, 18%, 25%, 50%, 75%, 100%]
-4. Wait for 1.5 sec and the program will resume at that brightness
+4. Wait for 3.0 sec and the program will resume at that brightness
