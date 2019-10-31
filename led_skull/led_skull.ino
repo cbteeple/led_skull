@@ -59,7 +59,7 @@ Adafruit_NeoPixel strip_hair = Adafruit_NeoPixel(PIXEL_COUNT_1, PIXEL_PIN_1, NEO
 
 bool oldState = HIGH;
 int showType = 0;
-int numShows = 8;
+int numShows = 7;
 bool switchShows = false;
 float Brightness = BRIGHT_LEVELS[numBrightLevels-1];
 bool requiresLoop=0;
@@ -147,28 +147,23 @@ void startShow() {
           requiresLoop=0;
         }//Yellow
         break;
-      case 4: {
-          //genPulse(255, 255, 0,20);
-          genPulse(0, 164, 255,10);
-          requiresLoop=0;
-        } //Red
+      case 4: rainbowCycleDim(10,1,true); //DISCO SKULL!!!!!
         break;
-      case 5: rainbowCycleDim(10,1,true); //DISCO SKULL!!!!!
-        break;
-      case 6: {roboCop(255, 10, 0,0, 0, 0,1);
+      case 5: {roboCop(255, 10, 0,0, 0, 0,1);
           //showColorAnimate(0, 164, 255,30);
           requiresLoop=0;
-      }
+        }
         break;
-      case 7: { showColor(255,0,0);
-          rainbowCycleHair(5,1); //Rave Hair/Spikes!!!!
+      case 6: { showColor(255,0,0);
+          rainbowCycleHair(3,1); //Rave Hair/Spikes!!!!
           requiresLoop=1;
+        }
+        break;
+      default:{
+        showColor(255,0,0);
+        rainbowCycleHair(3,1); //Rave Hair/Spikes!!!!
       }
-        break;
-      case 161: rainbowCycleDim(5,1,false);
-        break;
-      case 171: rainbowCycleDim(20,1,false);
-        break;
+      break;
   }
 }
 
@@ -213,7 +208,19 @@ void rainbowCycleDim(uint8_t wait, uint8_t reps, bool FullColor) {
 
 void halfAndHalf(uint8_t r1, uint8_t g1, uint8_t b1, uint8_t r2, uint8_t g2, uint8_t b2,uint16_t wait){
   uint16_t i;
+    for(i=0; i< strip_hair.numPixels(); i++) {
+      if (setBright || switchShows){
+        break ;
+      }
+      strip_hair.setPixelColor(i, strip_hair.Color(r1*Brightness,g1*Brightness,b1*Brightness));
+      strip_hair.show(); 
+      delay(wait); 
+    }
+    
     for(i=0; i< strip.numPixels(); i++) {
+      if (setBright || switchShows){
+        break ;
+      }
       if (i<strip.numPixels()/2){
         strip.setPixelColor(i, strip.Color(r1*Brightness,g1*Brightness,b1*Brightness));
       }
@@ -234,12 +241,25 @@ void rainbowCycleHair(uint8_t wait, uint8_t reps) {
     if (setBright || switchShows){
       break ;
     }
-    for(i=0; i< strip_hair.numPixels(); i++) {
-      strip_hair.setPixelColor(i, Wheel_hair(((i * 256 / strip_hair.numPixels()) + j) & 255));
+    for(i=0; i< strip_hair.numPixels()+1; i++) {
+      strip_hair.setPixelColor(i, Wheel_hair(((i * 256 / strip_hair.numPixels()+1) + j) & 255));
+
+      // Set the whole head color as the last "LED"
+      if (i==strip_hair.numPixels()){
+        for (int k = 0; k< strip.numPixels(); k++){
+          strip.setPixelColor(k, Wheel_hair(((i * 256 / strip_hair.numPixels()+1) + j) & 255));
+        }
+      }
     }
     strip_hair.show();
+    strip.show();
     delay(wait);
   }
+}
+
+void pingPongHair(uint8_t r_base, uint8_t g_base, uint8_t b_base, uint8_t r_dot, uint8_t g_dot, uint8_t b_dot,uint16_t wait){
+  
+  
 }
 
 
@@ -315,12 +335,6 @@ void genPulse(uint8_t red, uint8_t green,uint8_t blue,uint16_t wait){
 
 
 
-
-
-
-//================================
-//HELPER FUNCTIONS
-
 void showColor(uint8_t red,uint8_t green,uint8_t blue){
   for(int i=0; i< strip.numPixels(); i++) {
       strip.setPixelColor(i, strip.Color(red*Brightness,green*Brightness,blue*Brightness));
@@ -354,6 +368,9 @@ void showRainbow(uint16_t wait){
   uint16_t j=0;
   uint16_t i=0;
   for(i=0; i< strip.numPixels(); i++) {
+    if (setBright || switchShows){
+          return;
+    }
     strip.setPixelColor(i, Wheel(((i * 256 / strip.numPixels()) + j) & 255));
     strip.show(); 
     delay(wait); 
@@ -368,16 +385,6 @@ void startBlink(uint16_t wait){
   delay(wait);
 }
 
-
-void hairOnly(uint16_t wait){
-  uint16_t j=0;
-  uint16_t i=0;
-  for(i=0; i< strip_hair.numPixels(); i++) {
-    strip_hair.setPixelColor(i, Wheel(((i * 256 / strip_hair.numPixels()) + j) & 255));
-    strip_hair.show(); 
-    delay(wait); 
-  }
-}
 
 
 void roboCop(uint8_t r1, uint8_t g1, uint8_t b1, uint8_t r2, uint8_t g2, uint8_t b2,uint16_t wait){
@@ -412,6 +419,11 @@ void roboCop(uint8_t r1, uint8_t g1, uint8_t b1, uint8_t r2, uint8_t g2, uint8_t
     
 }
 
+
+
+
+//================================
+//HELPER FUNCTIONS
 
 // Input a value 0 to 255 to get a color value.
 // The colours are a transition r - g - b - back to r.
